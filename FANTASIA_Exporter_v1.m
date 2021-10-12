@@ -439,7 +439,7 @@ global TP
 
     % Setup hFileList
     TP.EX.Dir.FileListR =	dir(fullfile(TP.EX.Dir.DirString,'\*.mat'));    
-    TP.EX.Dir.FileListT =	TP.EX.Dir.FileListR(2:end);
+    TP.EX.Dir.FileListT =	TP.EX.Dir.FileListR(2:end); % to exclude the session mat file
 %     TP.EX.Dir.FileNum =     length(TP.EX.Dir.FileListR);
 %     fileliststring =        reshape([TP.EX.Dir.FileListR.name], 19, []);
     TP.EX.Dir.FileNum =     length(TP.EX.Dir.FileListT);

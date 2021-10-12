@@ -1,4 +1,8 @@
 function varargout = FANTASIA_Exporter_v2(varargin)
+% new version - 2021
+% for experiments done after 2021 (starting from 102D) use this version
+
+
 % Flexible And Nimble Two-photon AOD Scanning In vivo imAging
 % The Exporter code for exporting raw data into TIFF pictures or videos
 % This is the Verision 5.1:
@@ -32,7 +36,7 @@ fclose('all'); % prevent fseek errors when switching files in "SelectFile" (Yueq
 global TP
 
 TP.EX.Name =            mfilename;
-TP.EX.Dir.DirString =   uigetdir('C:\=FANTASIA=Stream=', 'Pick a Directory');
+TP.EX.Dir.DirString =   uigetdir('U:\', 'Pick a Directory');
 SetupD;
 SetupFigurePI;
 SetupFileVolumeLists;
@@ -42,9 +46,10 @@ set(TP.EX.UI.H0.hVlmeList,                      'Callback', [TP.EX.Name, '(''Sel
 set(TP.EX.UI.H.hImage_DisplayMode_Rocker,       'SelectionChangeFcn', [TP.EX.Name, '(''SelectDisplayMode'')']);
 set(TP.EX.UI.H.hImage_SaveVideoAVI_Momentary,	'Callback', [TP.EX.Name, '(''SaveVideoAVI'')']);
 set(TP.EX.UI.H.hImage_SaveVideoMP4_Momentary,   'Callback', [TP.EX.Name, '(''SaveVideoMP4'')']);
-set(TP.EX.UI.H.hImage_SaveImageOne_Momentary,	'Callback', [TP.EX.Name, '(''SaveImageOne'')']);
-set(TP.EX.UI.H.hImage_SaveSessionOne_Momentary,   'Callback', [TP.EX.Name, '(''SaveSessionOne'')']);
-set(TP.EX.UI.H.hImage_SaveSessionAll_Momentary,   'Callback', [TP.EX.Name, '(''SaveSessionAll'')']);
+set(TP.EX.UI.H.hImage_SaveImage_Momentary,	'Callback', [TP.EX.Name, '(''SaveImageOne'')']);
+set(TP.EX.UI.H.hImage_SaveTrial_Momentary,   'Callback', [TP.EX.Name, '(''SaveTrial'')']);
+set(TP.EX.UI.H.hImage_SaveSessionSep_Momentary,   'Callback', [TP.EX.Name, '(''SaveSessionSep'')']);
+set(TP.EX.UI.H.hImage_SaveSessionCom_Momentary,   'Callback', [TP.EX.Name, '(''SaveSessionCom'')']);
 function SetupFigurePI
 global TP
 
@@ -240,12 +245,14 @@ S.PnltImage.column = 1;     S.PnltImage.row = 1;
     WP.handleseed = 'TP.EX.UI.H0.Panelette';
     WP.type = 'MomentarySwitch';  WP.name = 'Save One Image';
     WP.row = S.PnltImage.row + 1; 	WP.column = S.PnltImage.column + 3;  
-    WP.text = {'Save the CURRENT image',''};
-    WP.tip = { 'Save the CURRENT image',''};
+    WP.text = {'Save the CURRENT image',...
+        'Save the current TRIAL'};
+    WP.tip = { 'Save the CURRENT image',...
+        'Save the current TRIAL'};
     WP.inputEnable = {'on','on'};
     Panelette(S, WP, 'TP');
-    TP.EX.UI.H.hImage_SaveImageOne_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{1}; 
-%     TP.EX.UI.H.hImage_SaveImageOne_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{2}; 
+    TP.EX.UI.H.hImage_SaveImage_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{1}; 
+    TP.EX.UI.H.hImage_SaveTrial_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{2}; 
     clear WP;
     
 % create Edit panel 'Image Arm Pos'
@@ -282,12 +289,14 @@ S.PnltImage.column = 1;     S.PnltImage.row = 1;
     WP.handleseed = 'TP.EX.UI.H0.Panelette';
     WP.type = 'MomentarySwitch';  WP.name = 'Save Images';
     WP.row = S.PnltImage.row; 	WP.column = S.PnltImage.column + 2;  
-    WP.text = {'Save the CURRENT session','Save ALL sessions'};
-    WP.tip = { 'Save the CURRENT session','Save ALL sessions'};
+    WP.text = {'Save the current SESSION (separate)',...
+        'Save the current SESSION (combine)'};
+    WP.tip = { 'Save the current SESSION (separate)',...
+        'Save the current SESSION (combine)'};
     WP.inputEnable = {'on','on'};
     Panelette(S, WP, 'TP');
-    TP.EX.UI.H.hImage_SaveSessionOne_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{1}; 
-    TP.EX.UI.H.hImage_SaveSessionAll_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{2}; 
+    TP.EX.UI.H.hImage_SaveSessionSep_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{1}; 
+    TP.EX.UI.H.hImage_SaveSessionCom_Momentary = TP.EX.UI.H0.Panelette{WP.row,WP.column}.hMomentary{2}; 
     clear WP;
     
 % create MomentarySwitch panels 'Video Save'
@@ -438,12 +447,12 @@ function SetupFileVolumeLists
 global TP
     % =========== read File names, updated 3/26/2021 by Yueqi ===========
     % Setup hFileList
-    TP.EX.Dir.FileListR =	dir(fullfile(TP.EX.Dir.DirString,'\*.mat'));
-    TP.EX.Dir.MatNames = struct2cell(TP.EX.Dir.FileListR);
-    TP.EX.Dir.MatNames = TP.EX.Dir.MatNames(1,:)'; % a cell array
-    TP.EX.Dir.SesFileIndex = find(contains(TP.EX.Dir.MatNames, 'Ses'));
-    TP.EX.Dir.Ses = TP.EX.Dir.MatNames(TP.EX.Dir.SesFileIndex);
-    % get corresponding trial names
+    TP.EX.Dir.FileListR = dir(fullfile(TP.EX.Dir.DirString,'\*.mat')); % all mat files, including BCD, session, trial files
+    TP.EX.Dir.MatNames  = struct2cell(TP.EX.Dir.FileListR);
+    TP.EX.Dir.MatNames = TP.EX.Dir.MatNames(1,:)'; % a vertical cell array
+    TP.EX.Dir.SesFileIndex = find(contains(TP.EX.Dir.MatNames, 'Ses')); % index of session mat files
+    TP.EX.Dir.SesNames = TP.EX.Dir.MatNames(TP.EX.Dir.SesFileIndex); % names of session mat files
+    % for each session, get corresponding trial names
     for i = 1:length(TP.EX.Dir.SesFileIndex) 
         if i == length(TP.EX.Dir.SesFileIndex) % if already the last session
             TP.EX.Dir.SesTrlNames{i} = TP.EX.Dir.MatNames(TP.EX.Dir.SesFileIndex(i)+1:end);
@@ -453,8 +462,9 @@ global TP
         end
     end
     
-    TP.EX.Dir.FileListT = TP.EX.Dir.FileListR(2:end);
-    TP.EX.Dir.FileNum =     length(TP.EX.Dir.FileListT);
+    TP.EX.Dir.FileListT = TP.EX.Dir.FileListR(2:end); % session and trial files
+    TP.EX.Dir.FileNum = length(TP.EX.Dir.FileListT);
+    % separate sessions with | to load to list
     fileliststring = [TP.EX.Dir.FileListT.name];
     [~,endIndex] = regexp(fileliststring,'mat');
     shift = 0;
@@ -463,6 +473,7 @@ global TP
         shift = shift + 1;
     end
     set(TP.EX.UI.H0.hFileList, 'string', fileliststring);
+    % ====================================================================
     
 %     TP.EX.Dir.FileListT =	dir(fullfile(TP.EX.Dir.DirString,'\*.rec'));   
 %     TP.EX.Dir.FileNum =     length(TP.EX.Dir.FileListT);
@@ -488,13 +499,15 @@ global TP
 %     set(TP.EX.UI.H0.hFileList, 'string', fileliststring(1:end-1));
     
     % Setup FileHandles and FileSettings
+    TP.EX.D.Meta = load([TP.EX.Dir.DirString, '\', TP.EX.Dir.FileListR(1).name]);
     for i = 1:TP.EX.Dir.FileNum
         % ====== modified here by Yueqi, 3/26/2021 ========
 
         if contains(TP.EX.Dir.FileListT(i).name, 'Ses')
             current_session = i;
+            
         elseif contains(TP.EX.Dir.FileListT(i).name, 'Trl')
-             fnametemp = TP.EX.Dir.FileListT(i).name;
+            fnametemp = TP.EX.Dir.FileListT(i).name;
         
             % find corresponding session file
             hSessMatTemp = matfile([TP.EX.Dir.DirString, '\', TP.EX.Dir.FileListT(current_session).name]);
@@ -502,8 +515,14 @@ global TP
             TP.EX.D.File(i,1).hFileMat =    hFileMatTemp;
             TP.EX.D.File(i,1).hSessMat =    hSessMatTemp;            
             TP.EX.D.File(i,1).hFileRec = fopen([TP.EX.Dir.DirString,'\',fnametemp(1:end-4),'.rec'],'r');
+            
+            TP.EX.D.File(i,1).SettingsMsg = [];
+            ttemp = TP.EX.D.File(i,1).hSessMat.Load;
+            ttemp = ['Sound:', ttemp.SoundTitle];
+            TP.EX.D.File(i,1).SettingsMsg = [TP.EX.D.File(i,1).SettingsMsg ttemp];      
 
-            % D is missing in new version (3/26/2021)
+
+            
 %             TP.EX.D.File(i,1).D =           hSessMatTemp.D;             
 %             TP.EX.D.File(i,1).D.Trl =       hFileMatTemp; 
 %             ttemp = evalc('TP.EX.D.File(i,1).D.Ses.Scan');
@@ -538,14 +557,31 @@ function SelectFile
 %% Setup the Selected File and according VlmeList 
 global TP
     % Different from FANTASIA('GUI_ScanParameters')
-    TP.D =         TP.EX.D.File(TP.EX.D.CurFileNum).D;
+    TP.D =         TP.EX.D.Meta.D;
+
+%     TP.D =         TP.EX.D.File(TP.EX.D.CurFileNum).D;
     
     TP.D.Ses.Image.NumUpdtPerVlme = 1;    
     TP.D.Ses.Image.NumVlmePerUpdt = 1;
-    TP.D.Ses.Image.NumPixlPerUpdt = TP.D.Ses.Scan.NumSmplPerVlme / TP.D.Ses.Scan.NumSmplPerPixl / TP.D.Ses.Image.NumUpdtPerVlme;                                    
-    TP.D.Ses.Image.NumSmplPerUpdt = TP.D.Ses.Image.NumSmplPerPixl * TP.D.Ses.Image.NumPixlPerUpdt;
-  	TP.D.Ses.Image.NumSmplPerVlme = TP.D.Ses.Image.NumSmplPerUpdt * TP.D.Ses.Image.NumUpdtPerVlme;
     
+    % modify variable names so that it can be used in SetupImageD without
+    % changing names
+    TP.D.Ses.Image.NumPixlPerUpdt = TP.D.Exp.BCD.ImageNumPixlPerUpdt;                                    
+    TP.D.Ses.Image.NumSmplPerUpdt = TP.D.Exp.BCD.ImageNumSmplPerUpdt;
+    TP.D.Ses.Image.NumSmplPerPixl = TP.D.Exp.BCD.ImageNumSmplPerPixl;
+    TP.D.Ses.Image.NumUpdtPerVlme = TP.D.Exp.BCD.ImageNumUpdtPerVlme;
+    TP.D.Ses.Image.NumVlmePerUpdt = TP.D.Exp.BCD.ImageNumVlmePerUpdt;
+    
+    TP.D.Ses.Scan.NumSmplPerPixl = TP.D.Exp.BCD.ScanNumSmplPerPixl;
+    TP.D.Ses.Scan.NumSmplPerVlme = TP.D.Exp.BCD.ScanNumSmplPerVlme;
+    TP.D.Ses.Scan.NumPixlPerAxis = TP.D.Exp.BCD.ScanNumPixlPerAxis;
+    TP.D.Ses.Scan.NumLayrPerVlme = TP.D.Exp.BCD.ScanNumLayrPerVlme;
+    TP.D.Ses.Scan.Mode  = TP.D.Exp.BCD.ScanMode;
+
+%     TP.D.Ses.Image.NumPixlPerUpdt = TP.D.Ses.Scan.NumSmplPerVlme / TP.D.Ses.Scan.NumSmplPerPixl / TP.D.Ses.Image.NumUpdtPerVlme;                                    
+%     TP.D.Ses.Image.NumSmplPerUpdt = TP.D.Ses.Image.NumSmplPerPixl * TP.D.Ses.Image.NumPixlPerUpdt;
+  	TP.D.Ses.Image.NumSmplPerVlme = TP.D.Ses.Image.NumSmplPerUpdt * TP.D.Ses.Image.NumUpdtPerVlme;
+     
     TP.EX.D.CurFileNum =    get(TP.EX.UI.H0.hFileList, 'value'); 
     TP.EX.D.CurFileFid =    TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec;    
 
@@ -565,15 +601,21 @@ global TP
     % Scan Image Parameters Display
     set(TP.EX.UI.H0.hFileText, 'string',...
         TP.EX.D.File(TP.EX.D.CurFileNum).SettingsMsg);
-    set(TP.EX.UI.H0.hVlmeList, 'value', 1);
-    fseek(TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec, 0, 'eof');
-    VlmeNum =  ftell(TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec)/2/653/652;
-    fseek(TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec, 0, 'bof');
-    TP.EX.D.CurFileVlmeMax = VlmeNum;
-    set(TP.EX.UI.H0.hVlmeList, 'string',...
-        sprintf(['%0' num2str(floor(log10(VlmeNum)+1)) 'd|'], 1:1:VlmeNum));
-    
-    SelectVlme;
+
+    if ismember(TP.EX.D.CurFileNum+1, TP.EX.Dir.SesFileIndex) % is a session file is selected
+    else % is a trial file is selected       
+        set(TP.EX.UI.H0.hVlmeList, 'value', 1);
+        fseek(TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec, 0, 'eof');
+        VlmeNum =  ftell(TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec)/2/653/652;
+        fseek(TP.EX.D.File(TP.EX.D.CurFileNum).hFileRec, 0, 'bof');
+        TP.EX.D.CurFileVlmeMax = VlmeNum;
+        % ============= modified by Yueqi 3/28/2021 ===========
+        stemp = sprintf(['%0' num2str(floor(log10(VlmeNum)+1)) 'd|'], 1:1:VlmeNum);
+        set(TP.EX.UI.H0.hVlmeList, 'string',...
+            stemp(1:end-1)); 
+        % =====================================================
+        SelectVlme;
+    end
     
 function SelectVlme
 %% Setup the Selected Volume
@@ -584,6 +626,9 @@ global TP
      
     TP.D.Vol.DataColRaw = ...
         fread(TP.EX.D.CurFileFid, TP.D.Ses.Image.NumSmplPerVlme, 'int16');
+    % ==== modified here ====
+     TP.D.Ses.Scan.ScanInd = TP.EX.D.Meta.D.Exp.BCD.ScanScanInd;
+    % ======================
     eval(TP.D.Ses.Image.ImgFunc);
       
     if TP.EX.D.ImageDisplayMode
@@ -710,7 +755,7 @@ close(TP.EX.UI.H0.hWaitBar);
 function SaveImageOne
 global TP
 % ------------------- select folder for saving tiff -----------------------
-TP.EX.Dir.DirSaveString =   uigetdir('D:\=data=\80Z_imaging\img_2p', 'Pick a Directory for saving Tiff files');
+TP.EX.Dir.DirSaveString =   uigetdir('D:\SynologyDrive\=data=\_Two-photon\img_2p', 'Pick a Directory for saving Tiff files');
 % set Tiff name
 % TP.EX.Dir.FileList changed to TP.EX.Dir.FileListT in new version of Exporter (5/8/18) by Yueqi 
 fnametemp = TP.EX.Dir.FileListT(TP.EX.D.CurFileNum).name; 
@@ -772,10 +817,10 @@ close(TP.EX.D.CurTiffObj)
 disp(['file ', fnametemp(1:15), '_', vnametemp,' saved!']);
 
 
-function SaveSessionOne
+function SaveTrial
 global TP
 % ------------------- select folder for saving tiff -----------------------
-TP.EX.Dir.DirSaveString =   uigetdir('D:\=data=\80Z_imaging\img_2p', 'Pick a Directory for saving Tiff files');
+TP.EX.Dir.DirSaveString =   uigetdir('D:\SynologyDrive\=data=\_Two-photon\img_2p', 'Pick a Directory for saving Tiff files');
 % set Tiff name
 % TP.EX.Dir.FileList changed to TP.EX.Dir.FileListT in new version of Exporter (5/8/18) by Yueqi 
 fnametemp = TP.EX.Dir.FileListT(TP.EX.D.CurFileNum).name;
@@ -882,21 +927,20 @@ disp(['file ', fnametemp(1:15),' saved!']);
 toc
 
 
-function SaveSessionAll
+function SaveSessionCom
+% modified on 3/27/2021 to save all trials in a session (trials are
+% combined in one TIFF file)
 global TP
-
 % ------------------- select folder for saving tiff -----------------------
-TP.EX.Dir.DirSaveString =   uigetdir('D:\=data=\80Z_imaging\img_2p', 'Pick a Directory for saving Tiff files');
-
-for k = 1:length(TP.EX.Dir.FileListT)
-
-    % set Tiff name
-    % TP.EX.Dir.FileList changed to TP.EX.Dir.FileListT in new version of Exporter (5/8/18) by Yueqi 
-    set(TP.EX.UI.H0.hFileList, 'value', k); % iterate through different sessions
-    SelectFile;
-    
-    fnametemp = TP.EX.Dir.FileListT(TP.EX.D.CurFileNum).name;
-    tiffnametemp = [TP.EX.Dir.DirSaveString,'\', fnametemp(1:15),'.tif'];
+TP.EX.Dir.DirSaveString =   uigetdir('E:\Dropbox\_Yueqi Guo\_research\Imaging\=data=\_two-photon\102D\', 'Pick a Directory for saving Tiff files');
+if ~ismember(TP.EX.D.CurFileNum+1, TP.EX.Dir.SesFileIndex)
+    disp('ERROR: must select a session file (search or record)');
+else
+    IndSess = find(TP.EX.Dir.SesFileIndex == TP.EX.D.CurFileNum+1);
+    fnametemp = TP.EX.Dir.SesNames{IndSess};
+    tiffnametemp = [TP.EX.Dir.DirSaveString,'\', fnametemp(1:end-4),'.tif'];
+%     fnametemp = TP.EX.Dir.FileListT(TP.EX.D.CurFileNum).name;
+%     tiffnametemp = [TP.EX.Dir.DirSaveString,'\', fnametemp(1:15),'.tif'];
 
     % ------------------------- if file already exist -------------------------
     if exist(tiffnametemp) 
@@ -923,6 +967,15 @@ for k = 1:length(TP.EX.Dir.FileListT)
                 return
         end
     end
+      
+    % ------------------------- loop through all trials in this session -------------------------
+    TP.EX.D.CurTiffObj = TifFantasia(tiffnametemp,652,653,TP.D);
+    for k = 1:length(TP.EX.Dir.SesTrlNames{IndSess}) 
+    % set Tiff name
+    % TP.EX.Dir.FileList changed to TP.EX.Dir.FileListT in new version of Exporter (5/8/18) by Yueqi 
+    set(TP.EX.UI.H0.hFileList, 'value', TP.EX.Dir.SesFileIndex(IndSess)+k-1); % iterate through different sessions
+    SelectFile;
+    
     set(TP.EX.UI.H0.hVlmeList, 'value', 1); % start from first frame
     SelectVlme;
     SetupFrame; 
@@ -950,7 +1003,6 @@ for k = 1:length(TP.EX.Dir.FileListT)
     % option 2: use self-defined class based on ScanImage 
         % ts = TifFantasia(filename, frameWidth, frameHeight, imageDescription, Property1, Value1, ...)
         % dateTimeTemp = datestr(TP.D.Trl.TimeStampStopped,'yyyy:mm:dd HH:MM:SS');
-        TP.EX.D.CurTiffObj = TifFantasia(tiffnametemp,652,653,TP.D);
         appendFrame(TP.EX.D.CurTiffObj,TP.D.Vol.Frame{1});
     end
 
@@ -987,15 +1039,144 @@ for k = 1:length(TP.EX.Dir.FileListT)
             num2str(i), ' finished.']);
         end
     end
-
     close(TP.EX.UI.H0.hWaitBar);
+    end
+    
     close(TP.EX.D.CurTiffObj)
  
     disp(['file ', fnametemp(1:15),' saved!']);
     toc
+
+end % end if
+disp(['========= The session is saved! ==========='])
+
+function SaveSessionSep
+% modified on 3/27/2021 to save all trials in a session (trials are
+% combined in one TIFF file)
+global TP
+% ------------------- select folder for saving tiff -----------------------
+TP.EX.Dir.DirSaveString =   uigetdir('E:\Dropbox\_Yueqi Guo\_research\Imaging\=data=\_two-photon\102D\', 'Pick a Directory for saving Tiff files');
+if ~ismember(TP.EX.D.CurFileNum+1, TP.EX.Dir.SesFileIndex)
+    disp('ERROR: must select a session file (search or record)');
+else
+    IndSess = find(TP.EX.Dir.SesFileIndex == TP.EX.D.CurFileNum+1);
+    TP.EX.Dir.DirSaveString = [TP.EX.Dir.DirSaveString, '\', TP.EX.Dir.SesNames{IndSess}(1:end-4),'\'];
+    if ~exist(TP.EX.Dir.DirSaveString,'dir')       
+        mkdir(TP.EX.Dir.DirSaveString)
+    end
+    % ------------------------- loop through all trials in this session -------------------------
     
-end
-disp(['========= All sessions are saved! ==========='])
+    for k = 1:length(TP.EX.Dir.SesTrlNames{IndSess}) 
+    % set Tiff name
+    % TP.EX.Dir.FileList changed to TP.EX.Dir.FileListT in new version of Exporter (5/8/18) by Yueqi 
+    set(TP.EX.UI.H0.hFileList, 'value', TP.EX.Dir.SesFileIndex(IndSess)+k-1); % iterate through different sessions
+    SelectFile;
+    
+    % set file name
+    fnametemp = TP.EX.Dir.SesTrlNames{IndSess}{k};
+    tiffnametemp = [TP.EX.Dir.DirSaveString, fnametemp(1:end-4),'.tif'];
+    % ------------------------- if file already exist -------------------------
+    if exist(tiffnametemp) 
+        % popout dialogut window
+        choice = questdlg(['File ', fnametemp(1:15), ' already exist, overwrite or rename?'], ...
+        'Duplicated file', ...
+        'Overwrite','Rename','Cancel','Cancel');
+        % Handle response
+        switch choice
+            case 'Overwrite'
+                FIDs = fopen('all');
+                if length(FIDs) > 4 % if the object is open in MATLAB, close it. Otherwise delete won't be successful
+                    fclose(FIDs(end));
+                end
+                delete(tiffnametemp);            
+            case 'Rename'
+                prompt={'Enter an alternative file name'};
+                name = 'New name for tiff file';
+                defaultans = {fnametemp(1:15)};
+                options.Interpreter = 'tex';
+                answer = inputdlg(prompt,name,[1 40],defaultans,options);
+                tiffnametemp = [TP.EX.Dir.DirSaveString,'\', answer{1}, '.tif'];
+            case 'Cancel'
+                return
+        end
+    end
+    TP.EX.D.CurTiffObj = TifFantasia(tiffnametemp,652,653,TP.D);
+
+    
+    set(TP.EX.UI.H0.hVlmeList, 'value', 1); % start from first frame
+    SelectVlme;
+    SetupFrame; 
+
+    % ------------------- chose a tiff saving algorithm --------------
+    option = 2; % 1 for LibTiff, 2 for TifFantasia (fastest), 3 for saveastiff (slowest)
+    tic
+    % ------------------- set the first frame -----------------
+    if option == 1    
+    % option 1: use MATLAB LibTiff 
+        TP.EX.D.CurTiffObj = Tiff(tiffnametemp,'w');
+        % set required tags
+        tagTemp.ImageLength = 653;
+        tagTemp.ImageWidth = 652;
+        tagTemp.Photometric = 1;
+        tagTemp.BitsPerSample = 16;
+        tagTemp.SamplesPerPixel = 1;
+        tagTemp.RowsPerStrip = 16;
+        tagTemp.PlanarConfiguration = 1;
+        tagTemp.Software = 'FANTASIA';
+        setTag(TP.EX.D.CurTiffObj,tagTemp);
+        write(TP.EX.D.CurTiffObj,TP.D.Vol.Frame{1}); 
+
+    else
+    % option 2: use self-defined class based on ScanImage 
+        % ts = TifFantasia(filename, frameWidth, frameHeight, imageDescription, Property1, Value1, ...)
+        % dateTimeTemp = datestr(TP.D.Trl.TimeStampStopped,'yyyy:mm:dd HH:MM:SS');
+        
+%         appendFrame(TP.EX.D.CurTiffObj,TP.D.Vol.Frame{1});
+%       rotate 180 degrees 9/7/2021 (Xindong)
+        appendFrame(TP.EX.D.CurTiffObj, rot90(flipud(TP.D.Vol.Frame{1}),2) );
+    end
+
+    % progress bar
+    TP.EX.UI.H0.hWaitBar = waitbar(0,...
+        ['Totally ', num2str(TP.EX.D.CurFileVlmeMax), ' frames, ',...
+        num2str(0), ' finished.'],...
+        'Name', ['Exporting ', fnametemp(1:16), '.rec to a tiff file']);
+
+    disp(['file ', fnametemp(1:15),' started...'])
+
+    % ------------------- set appending frames -----------------
+    for i = 2:TP.EX.D.CurFileVlmeMax % start from 2nd frame
+        set(TP.EX.UI.H0.hVlmeList, 'value', i);
+        SelectVlme;
+        SetupFrame;
+
+        if option == 1
+        % option 1: use MATLAB LibTiff 
+            writeDirectory(TP.EX.D.CurTiffObj);
+            setTag(TP.EX.D.CurTiffObj,tagTemp)
+            write(TP.EX.D.CurTiffObj,TP.D.Vol.Frame{1}); 
+        else
+        % option 2: use self-defined class based on ScanImage
+            appendFrame(TP.EX.D.CurTiffObj,TP.D.Vol.Frame{1});
+        end
+
+        % progress bar updated every 100 frames
+        if mod(i,100) == 0
+            waitbar(...
+            i/TP.EX.D.CurFileVlmeMax,...
+            TP.EX.UI.H0.hWaitBar,...
+            ['Totally ', num2str(TP.EX.D.CurFileVlmeMax), ' frames, ',...
+            num2str(i), ' finished.']);
+        end
+    end
+    close(TP.EX.UI.H0.hWaitBar);
+    close(TP.EX.D.CurTiffObj)
+    disp(['file ', fnametemp(1:15),' saved!']);
+    end
+    toc
+
+end % end if
+disp(['========= All trials from this session are saved! ==========='])
 % =================== Added by Yueqi 5/8/18 (end) ===========================
 
 
